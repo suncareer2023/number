@@ -1,0 +1,482 @@
+import React, { useState, useEffect } from 'react';
+
+const App = () => {
+  // Initial data structure
+  const initialPrograms = {
+    AM: {
+      mon: "ストレスマネジメント講座",
+      tue: "社会人基礎力養成講座",
+      wed: "動画編集講座",
+      thu: "ライフスキル講座",
+      fri: "就職準備講座"
+    },
+    PM: {
+      mon: ["自習", "IT自習"],
+      tue: ["MOS実践講座", "自習", "IT自習"],
+      wed: ["Excel講座", "自習", "IT自習"],
+      thu: ["リモートメール講座"],
+      fri: ["IT講座", "自習"]
+    }
+  };
+
+  const initialUsers = [
+    { id: 1, name: "利用者A" },
+    { id: 2, name: "利用者B" },
+    { id: 3, name: "利用者C" },
+    { id: 4, name: "利用者D" },
+    { id: 5, name: "利用者E" },
+    { id: 6, name: "利用者F" },
+    { id: 7, name: "利用者G" },
+    { id: 8, name: "利用者H" },
+    { id: 9, name: "利用者I" },
+    { id: 10, name: "利用者J" },
+    { id: 11, name: "利用者K" },
+    { id: 12, name: "利用者L" },
+    { id: 13, name: "利用者M" },
+    { id: 14, name: "利用者N" },
+    { id: 15, name: "利用者O" },
+    { id: 16, name: "利用者P" },
+    { id: 17, name: "利用者Q" },
+    { id: 18, name: "利用者R" },
+    { id: 19, name: "利用者S" },
+    { id: 20, name: "利用者T" }
+  ];
+
+  // Define state
+  const [users, setUsers] = useState(initialUsers);
+  const [programs, setPrograms] = useState(initialPrograms);
+  const [registrations, setRegistrations] = useState({});
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isStaffView, setIsStaffView] = useState(false);
+  
+  // Initialize registrations
+  useEffect(() => {
+    const initialReg = {};
+    users.forEach(user => {
+      initialReg[user.id] = {
+        AM: { mon: false, tue: false, wed: false, thu: false, fri: false },
+        PM: { mon: null, tue: null, wed: null, thu: false, fri: null },
+        lunch: { mon: false, tue: false, wed: false, thu: false, fri: false }
+      };
+    });
+    setRegistrations(initialReg);
+  }, []);
+
+  // Handle checkbox changes
+  const handleAMChange = (userId, day) => {
+    setRegistrations(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        AM: {
+          ...prev[userId].AM,
+          [day]: !prev[userId].AM[day]
+        }
+      }
+    }));
+  };
+
+  // Handle PM program selection
+  const handlePMChange = (userId, day, program) => {
+    setRegistrations(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        PM: {
+          ...prev[userId].PM,
+          [day]: program
+        }
+      }
+    }));
+  };
+
+  // Handle lunch checkbox changes
+  const handleLunchChange = (userId, day) => {
+    setRegistrations(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        lunch: {
+          ...prev[userId].lunch,
+          [day]: !prev[userId].lunch[day]
+        }
+      }
+    }));
+  };
+
+  // Count daily participants
+  const getDailyParticipants = () => {
+    const dailyCounts = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0 };
+    
+    users.forEach(user => {
+      if (!registrations[user.id]) return;
+      
+      ['mon', 'tue', 'wed', 'thu', 'fri'].forEach(day => {
+        if (registrations[user.id].AM[day] || registrations[user.id].PM[day] !== null) {
+          dailyCounts[day]++;
+        }
+      });
+    });
+    
+    return dailyCounts;
+  };
+
+  // Count program participants
+  const getProgramParticipants = (timeSlot, day) => {
+    let count = 0;
+    
+    users.forEach(user => {
+      if (!registrations[user.id]) return;
+      
+      if (timeSlot === 'AM' && registrations[user.id].AM[day]) {
+        count++;
+      } else if (timeSlot === 'PM' && registrations[user.id].PM[day] !== null) {
+        count++;
+      }
+    });
+    
+    return count;
+  };
+
+  // Get lunch participants
+  const getLunchParticipants = () => {
+    let count = 0;
+    
+    users.forEach(user => {
+      if (!registrations[user.id]) return;
+      
+      ['mon', 'tue', 'wed', 'thu', 'fri'].forEach(day => {
+        if (registrations[user.id].lunch[day]) {
+          count++;
+        }
+      });
+    });
+    
+    return count;
+  };
+
+  // Check if a user participates in a specific program
+  const doesUserParticipate = (userId, timeSlot, day) => {
+    if (!registrations[userId]) return false;
+    
+    if (timeSlot === 'AM') {
+      return registrations[userId].AM[day];
+    } else if (timeSlot === 'PM') {
+      return registrations[userId].PM[day] !== null;
+    }
+    
+    return false;
+  };
+
+  // Function to get participants for a specific program
+  const getProgramParticipantNames = (timeSlot, day) => {
+    return users
+      .filter(user => doesUserParticipate(user.id, timeSlot, day))
+      .map(user => user.name);
+  };
+
+  // Get lunch participants for a specific day
+  const getLunchParticipantNames = (day) => {
+    return users
+      .filter(user => registrations[user.id]?.lunch[day])
+      .map(user => user.name);
+  };
+
+  // User schedule component
+  const UserSchedule = ({ userId }) => {
+    const user = users.find(u => u.id === userId);
+    
+    if (!user || !registrations[userId]) return <div>Loading...</div>;
+    
+    return (
+      <div className="p-4 bg-white rounded shadow">
+        <h2 className="text-xl font-bold mb-4">{user.name}さんのスケジュール</h2>
+        
+        <table className="w-full border-collapse mb-6">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border p-2"></th>
+              <th className="border p-2">月曜日</th>
+              <th className="border p-2">火曜日</th>
+              <th className="border p-2">水曜日</th>
+              <th className="border p-2">木曜日</th>
+              <th className="border p-2">金曜日</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border p-2 font-bold">午前</td>
+              {['mon', 'tue', 'wed', 'thu', 'fri'].map(day => (
+                <td key={`am-${day}`} className="border p-2">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={registrations[userId].AM[day]}
+                      onChange={() => handleAMChange(userId, day)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">{programs.AM[day]}</span>
+                  </div>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="border p-2 font-bold">昼食</td>
+              {['mon', 'tue', 'wed', 'thu', 'fri'].map(day => (
+                <td key={`lunch-${day}`} className="border p-2">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={registrations[userId].lunch[day]}
+                      onChange={() => handleLunchChange(userId, day)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">希望</span>
+                  </div>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td className="border p-2 font-bold">午後</td>
+              {['mon', 'tue', 'wed', 'thu', 'fri'].map(day => (
+                <td key={`pm-${day}`} className="border p-2">
+                  {Array.isArray(programs.PM[day]) ? (
+                    <div className="flex flex-col">
+                      {programs.PM[day].map((program, idx) => (
+                        <div key={idx} className="flex items-center mb-1">
+                          <input
+                            type="radio"
+                            name={`pm-${day}`}
+                            checked={registrations[userId].PM[day] === program}
+                            onChange={() => handlePMChange(userId, day, program)}
+                            className="mr-2"
+                          />
+                          <span className="text-sm">{program}</span>
+                        </div>
+                      ))}
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name={`pm-${day}`}
+                          checked={registrations[userId].PM[day] === null}
+                          onChange={() => handlePMChange(userId, day, null)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">参加しない</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={registrations[userId].PM[day] === programs.PM[day][0]}
+                        onChange={() => 
+                          handlePMChange(userId, day, 
+                            registrations[userId].PM[day] ? null : programs.PM[day][0]
+                          )
+                        }
+                        className="mr-2"
+                      />
+                      <span className="text-sm">{programs.PM[day][0]}</span>
+                    </div>
+                  )}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+
+        <button 
+          onClick={() => setCurrentUser(null)} 
+          className="bg-blue-500 text-white px-4 py-2 rounded"
+        >
+          保存して戻る
+        </button>
+      </div>
+    );
+  };
+
+  // Staff view component
+  const StaffView = () => {
+    const dailyCounts = getDailyParticipants();
+    
+    return (
+      <div className="p-4 bg-white rounded shadow">
+        <h2 className="text-xl font-bold mb-4">スタッフ確認ページ</h2>
+        
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-2">日別参加者数</h3>
+          <div className="grid grid-cols-5 gap-4">
+            <div className="bg-gray-100 p-2 rounded">
+              <div className="font-bold">月曜日</div>
+              <div className="text-2xl">{dailyCounts.mon}名</div>
+            </div>
+            <div className="bg-gray-100 p-2 rounded">
+              <div className="font-bold">火曜日</div>
+              <div className="text-2xl">{dailyCounts.tue}名</div>
+            </div>
+            <div className="bg-gray-100 p-2 rounded">
+              <div className="font-bold">水曜日</div>
+              <div className="text-2xl">{dailyCounts.wed}名</div>
+            </div>
+            <div className="bg-gray-100 p-2 rounded">
+              <div className="font-bold">木曜日</div>
+              <div className="text-2xl">{dailyCounts.thu}名</div>
+            </div>
+            <div className="bg-gray-100 p-2 rounded">
+              <div className="font-bold">金曜日</div>
+              <div className="text-2xl">{dailyCounts.fri}名</div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-2">プログラム別参加者</h3>
+          
+          <h4 className="font-medium mt-4">午前のプログラム</h4>
+          <table className="w-full border-collapse mb-4">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border p-2">曜日</th>
+                <th className="border p-2">プログラム</th>
+                <th className="border p-2">参加者数</th>
+                <th className="border p-2">参加者</th>
+              </tr>
+            </thead>
+            <tbody>
+              {['mon', 'tue', 'wed', 'thu', 'fri'].map(day => (
+                <tr key={`am-${day}`}>
+                  <td className="border p-2">
+                    {{'mon': '月', 'tue': '火', 'wed': '水', 'thu': '木', 'fri': '金'}[day]}
+                  </td>
+                  <td className="border p-2">{programs.AM[day]}</td>
+                  <td className="border p-2">{getProgramParticipants('AM', day)}名</td>
+                  <td className="border p-2">{getProgramParticipantNames('AM', day).join(', ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          <h4 className="font-medium mt-4">午後のプログラム</h4>
+          <table className="w-full border-collapse mb-4">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border p-2">曜日</th>
+                <th className="border p-2">参加者数</th>
+                <th className="border p-2">参加者詳細</th>
+              </tr>
+            </thead>
+            <tbody>
+              {['mon', 'tue', 'wed', 'thu', 'fri'].map(day => (
+                <tr key={`pm-${day}`}>
+                  <td className="border p-2">
+                    {{'mon': '月', 'tue': '火', 'wed': '水', 'thu': '木', 'fri': '金'}[day]}
+                  </td>
+                  <td className="border p-2">{getProgramParticipants('PM', day)}名</td>
+                  <td className="border p-2">
+                    {Array.isArray(programs.PM[day]) ? (
+                      <div>
+                        {programs.PM[day].map(program => {
+                          const participants = users
+                            .filter(user => registrations[user.id]?.PM[day] === program)
+                            .map(user => user.name);
+                          
+                          return participants.length > 0 ? (
+                            <div key={program} className="mb-1">
+                              <span className="font-semibold">{program}:</span> {participants.join(', ')}
+                            </div>
+                          ) : null;
+                        })}
+                      </div>
+                    ) : (
+                      <div>
+                        {getProgramParticipantNames('PM', day).join(', ')}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          <h4 className="font-medium mt-4">昼食希望者</h4>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border p-2">曜日</th>
+                <th className="border p-2">希望者数</th>
+                <th className="border p-2">希望者</th>
+              </tr>
+            </thead>
+            <tbody>
+              {['mon', 'tue', 'wed', 'thu', 'fri'].map(day => {
+                const participants = getLunchParticipantNames(day);
+                
+                return (
+                  <tr key={`lunch-${day}`}>
+                    <td className="border p-2">
+                      {{'mon': '月', 'tue': '火', 'wed': '水', 'thu': '木', 'fri': '金'}[day]}
+                    </td>
+                    <td className="border p-2">{participants.length}名</td>
+                    <td className="border p-2">{participants.join(', ')}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        
+        <button 
+          onClick={() => setIsStaffView(false)} 
+          className="bg-blue-500 text-white px-4 py-2 rounded"
+        >
+          ユーザー選択に戻る
+        </button>
+      </div>
+    );
+  };
+
+  // User selection component
+  const UserSelection = () => {
+    return (
+      <div className="p-4 bg-white rounded shadow">
+        <h2 className="text-xl font-bold mb-4">サンキャリア高崎 プログラム申込</h2>
+        <p className="mb-4">参加するプログラムを選択してください。</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {users.map(user => (
+            <button
+              key={user.id}
+              onClick={() => setCurrentUser(user.id)}
+              className="bg-blue-500 text-white p-4 rounded"
+            >
+              {user.name}
+            </button>
+          ))}
+        </div>
+        
+        <button 
+          onClick={() => setIsStaffView(true)} 
+          className="bg-green-500 text-white px-4 py-2 rounded"
+        >
+          スタッフ確認画面へ
+        </button>
+      </div>
+    );
+  };
+
+  // Main render
+  return (
+    <div className="min-h-screen bg-gray-100 p-4">
+      {currentUser ? (
+        <UserSchedule userId={currentUser} />
+      ) : isStaffView ? (
+        <StaffView />
+      ) : (
+        <UserSelection />
+      )}
+    </div>
+  );
+};
+
+export default App;
